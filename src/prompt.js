@@ -1,3 +1,30 @@
+/**
+ * src/prompt.js — the brain of the auditor.
+ *
+ * Two exports, both consumed by src/anthropic.js:
+ *
+ *   SYSTEM_PROMPT  — the persona, scope, and rubric Claude sees on every
+ *                    run. Frames the model as a senior application security
+ *                    engineer, enumerates OWASP-flavoured things to look
+ *                    for, and pins down the risk-score / severity scales.
+ *                    Edit this to change WHAT gets flagged or HOW hard.
+ *
+ *   TOOL_SCHEMA    — JSON schema for the report_findings tool. Forcing
+ *                    Claude to call this tool (via tool_choice in
+ *                    anthropic.js) is what guarantees we get a parseable
+ *                    JSON object back instead of free-form prose. Edit
+ *                    this to change the SHAPE of the report.
+ *
+ * IMPORTANT: the two exports are tightly coupled. If you add a field to
+ * TOOL_SCHEMA, also describe it in SYSTEM_PROMPT (and vice-versa). The
+ * renderers in src/render.js then need to know how to display it.
+ *
+ * IMPORTANT: do NOT put JS comments inside the SYSTEM_PROMPT template
+ * literal — anything inside the backticks is sent verbatim to Claude.
+ */
+
+// The system prompt. Sent on every call. Keep it explicit, rubric-driven,
+// and free of hedging language — the model mirrors the tone it's given.
 export const SYSTEM_PROMPT = `You are a senior application security engineer reviewing a git diff before it is committed. Your job is to find real, actionable issues — not to lecture, hedge, or invent problems where none exist.
 
 You are reviewing only the lines that were ADDED or MODIFIED in this diff (the lines prefixed with "+"). Treat surrounding context lines as read-only background. Do not flag pre-existing issues that the diff did not introduce or touch.
@@ -47,11 +74,29 @@ You are reviewing only the lines that were ADDED or MODIFIED in this diff (the l
 5. **Severity per finding:** \`critical\` (exploitable + high impact), \`high\` (exploitable or definite bug), \`medium\` (likely problem), \`low\` (style/minor).
 6. The \`summary\` field is one short paragraph — what changed, the overall risk picture, the top concern.`;
 
+/**
+ * The tool schema Claude is forced to call. Field-level `description`s are
+ * read by the model when it fills in arguments, so they double as embedded
+ * instructions — keep them precise.
+ *
+ * The shape of the returned `input` object will exactly match
+ * input_schema.properties:
+ *   {
+ *     risk_score: 1..10,
+ *     summary: string,
+ *     findings: [
+ *       { category, severity, title, file?, line?, description, suggestion },
+ *       ...
+ *     ]
+ *   }
+ */
 export const TOOL_SCHEMA = {
   name: 'report_findings',
   description: 'Report the security, bug, and structural findings from the diff review, plus an overall 1–10 risk score and a one-paragraph summary.',
   input_schema: {
     type: 'object',
+    // `required` lists the fields Claude MUST provide. file/line are
+    // optional because the model can't always pinpoint a hunk line.
     required: ['risk_score', 'summary', 'findings'],
     properties: {
       risk_score: {
@@ -71,10 +116,13 @@ export const TOOL_SCHEMA = {
           type: 'object',
           required: ['category', 'severity', 'title', 'description', 'suggestion'],
           properties: {
+            // Drives the [CATEGORY] badge in the rendered output.
             category: {
               type: 'string',
               enum: ['security', 'bug', 'structure', 'style'],
             },
+            // Drives the colour of the severity badge in render.js
+            // (SEVERITY_COLOR mapping).
             severity: {
               type: 'string',
               enum: ['critical', 'high', 'medium', 'low'],
