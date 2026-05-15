@@ -1,0 +1,39 @@
+import chalk from 'chalk';
+
+const LOGO_LINES = [
+  ' ██████╗██╗     ██╗     █████╗ ██╗   ██╗██████╗ ██╗████████╗ ██████╗ ██████╗ ',
+  '██╔════╝██║     ██║    ██╔══██╗██║   ██║██╔══██╗██║╚══██╔══╝██╔═══██╗██╔══██╗',
+  '██║     ██║     ██║    ███████║██║   ██║██║  ██║██║   ██║   ██║   ██║██████╔╝',
+  '██║     ██║     ██║    ██╔══██║██║   ██║██║  ██║██║   ██║   ██║   ██║██╔══██╗',
+  '╚██████╗███████╗██║    ██║  ██║╚██████╔╝██████╔╝██║   ██║   ╚██████╔╝██║  ██║',
+  ' ╚═════╝╚══════╝╚═╝    ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝',
+];
+
+const LOGO_COLORS = [
+  chalk.cyanBright,
+  chalk.cyan,
+  chalk.blueBright,
+  chalk.blue,
+  chalk.magentaBright,
+  chalk.magenta,
+];
+
+export function printBanner() {
+  console.log('');
+  for (let i = 0; i < LOGO_LINES.length; i++) {
+    console.log(LOGO_COLORS[i].bold(LOGO_LINES[i]));
+  }
+  console.log('');
+  console.log(chalk.dim('  Security & code-quality audit for your git diffs, powered by Claude.'));
+  console.log('');
+}
+
+export function printAnalyzing({ fileCount, scope, model }) {
+  const scopeLabel = scope === 'staged' ? 'staged changes' : `${scope} changes`;
+  console.log(
+    chalk.yellow('▸ ') +
+      chalk.bold(`Analyzing ${fileCount} file${fileCount === 1 ? '' : 's'} `) +
+      chalk.dim(`(${scopeLabel}, model: ${model})...`)
+  );
+  console.log('');
+}
